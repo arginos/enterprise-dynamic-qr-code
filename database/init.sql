@@ -27,3 +27,12 @@ CREATE TABLE IF NOT EXISTS scan_events (
     device_type VARCHAR(50),
     scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 4. Create Leads Table (MISSING IN ORIGINAL CODE)
+CREATE TABLE IF NOT EXISTS leads (
+    id SERIAL PRIMARY KEY,
+    qr_code_id UUID REFERENCES qr_codes(id),
+    name VARCHAR(255),
+    email VARCHAR(255),
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
