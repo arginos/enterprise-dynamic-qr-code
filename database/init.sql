@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255), -- Nullable for Google Users
     google_id VARCHAR(255) UNIQUE, -- The new column
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    custom_domain VARCHAR(255) -- Stores "qr.yourbrand.com"
 );
 
 -- 2. Create QR Codes Table
@@ -14,6 +15,8 @@ CREATE TABLE IF NOT EXISTS qr_codes (
     short_slug VARCHAR(10) UNIQUE NOT NULL,
     destination_url TEXT NOT NULL,
     dynamic_rules JSONB,
+    meta_data JSONB, -- <--- ADDED: Stores color, logo, style prefs
+    webhook_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -28,11 +31,20 @@ CREATE TABLE IF NOT EXISTS scan_events (
     scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Create Leads Table (MISSING IN ORIGINAL CODE)
+-- 4. Create Leads Table
 CREATE TABLE IF NOT EXISTS leads (
     id SERIAL PRIMARY KEY,
     qr_code_id UUID REFERENCES qr_codes(id),
     name VARCHAR(255),
     email VARCHAR(255),
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. API Keys Table (Ensuring this exists based on your code)
+CREATE TABLE IF NOT EXISTS api_keys (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    name VARCHAR(255),
+    key_string VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

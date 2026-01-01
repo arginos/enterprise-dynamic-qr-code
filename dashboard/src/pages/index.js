@@ -3,6 +3,9 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { QrCode, LogOut, Edit, Save, Settings, FileText, CheckSquare, Square, Users, X, Activity, Terminal, Trash2, Key } from 'lucide-react';
 
+// Use env var or default to localhost:3000 (Important for fixing the fetch error)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
 export default function App() {
   const [token, setToken] = useState(null);
   useEffect(() => {
@@ -31,7 +34,7 @@ function AuthScreen() {
         <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0f172a'}}>
             <div className="glass-card" style={{maxWidth:'400px', width:'100%', textAlign:'center'}}>
                 <h2 style={{marginBottom:'20px'}}>QR Enterprise Login</h2>
-                <button onClick={() => window.location.href = "http://localhost:3000/api/auth/google"} className="primary-btn" style={{background:'white', color:'#111', display:'flex', alignItems:'center', justifyContent:'center', gap:'10px'}}>
+                <button onClick={() => window.location.href = `${API_URL}/api/auth/google`} className="primary-btn" style={{background:'white', color:'#111', display:'flex', alignItems:'center', justifyContent:'center', gap:'10px'}}>
                   <span style={{color:'#4285F4', fontWeight:'900', fontSize:'1.2rem'}}>G</span> Continue with Google
                 </button>
             </div>
@@ -75,21 +78,21 @@ function Dashboard({ token, onLogout }) {
 
   const fetchStats = async () => {
     try {
-        const res = await fetch('http://localhost:3000/api/stats', { headers: { 'Authorization': `Bearer ${token}` }});
+        const res = await fetch(`${API_URL}/api/stats`, { headers: { 'Authorization': `Bearer ${token}` }});
         if (res.ok) setStats(await res.json());
     } catch(e) { console.error(e); }
   };
 
   const fetchCodes = async () => {
     try {
-        const res = await fetch('http://localhost:3000/api/codes', { headers: { 'Authorization': `Bearer ${token}` }});
+        const res = await fetch(`${API_URL}/api/codes`, { headers: { 'Authorization': `Bearer ${token}` }});
         if (res.ok) setCodes(await res.json());
     } catch(e) { console.error(e); }
   };
 
   const fetchProfile = async () => {
     try {
-        const res = await fetch('http://localhost:3000/api/user/me', { headers: { 'Authorization': `Bearer ${token}` }});
+        const res = await fetch(`${API_URL}/api/user/me`, { headers: { 'Authorization': `Bearer ${token}` }});
         if (res.ok) {
             const data = await res.json();
             if (data.custom_domain) setCustomDomain(data.custom_domain);
@@ -99,14 +102,14 @@ function Dashboard({ token, onLogout }) {
 
   const fetchKeys = async () => {
       try {
-          const res = await fetch('http://localhost:3000/api/keys', { headers: { 'Authorization': `Bearer ${token}` }});
+          const res = await fetch(`${API_URL}/api/keys`, { headers: { 'Authorization': `Bearer ${token}` }});
           if (res.ok) setApiKeys(await res.json());
       } catch(e) { console.error(e); }
   };
 
   const createKey = async () => {
       try {
-          const res = await fetch('http://localhost:3000/api/keys', { 
+          const res = await fetch(`${API_URL}/api/keys`, { 
               method: 'POST',
               headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({ name: 'Dashboard Key' })
@@ -121,14 +124,14 @@ function Dashboard({ token, onLogout }) {
 
   const deleteKey = async (id) => {
       if(!confirm("Revoke this key? Apps using it will stop working.")) return;
-      await fetch(`http://localhost:3000/api/keys/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }});
+      await fetch(`${API_URL}/api/keys/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }});
       fetchKeys();
   };
 
   const saveDomain = async () => {
     setSavingDomain(true);
     try {
-        const res = await fetch('http://localhost:3000/api/user/domain', {
+        const res = await fetch(`${API_URL}/api/user/domain`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ domain: customDomain })
@@ -152,43 +155,31 @@ function Dashboard({ token, onLogout }) {
     if (leadCapture) rules.lead_capture = true;
 
     try {
-        const res = await fetch('http://localhost:3000/api/qr', {
+        const res = await fetch(`${API_URL}/api/qr`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            // UPDATED: Now sending the selected color!
             body: JSON.stringify({ destination, dynamic_rules: rules, color, webhook_url: webhook })
         });
         
-        // 1. Capture the response text first (in case it's not JSON)
         const text = await res.text();
-        
-        // 2. Try to parse it as JSON
         let data;
-        try {
-            data = JSON.parse(text);
-        } catch (e) {
-            // If it's not JSON (e.g. Server Error HTML), throw the text
-            throw new Error(text || res.statusText);
-        }
+        try { data = JSON.parse(text); } catch (e) { throw new Error(text || res.statusText); }
 
-        // 3. Check for API-level errors (like Malware alerts)
-        if (!res.ok) {
-            throw new Error(data.error || "Failed to create QR");
-        }
+        if (!res.ok) throw new Error(data.error || "Failed to create QR");
 
-        // Success!
         setGenerated({ ...data, color }); 
         fetchCodes();
         fetchStats();
         setDestination('');
         setWebhook('');
     } catch(e) { 
-        // Show the ACTUAL error message
         alert(e.message); 
     }
   };
 
   const updateQR = async (id, updates) => {
-    await fetch(`http://localhost:3000/api/qr/${id}`, {
+    await fetch(`${API_URL}/api/qr/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(updates)
@@ -206,7 +197,7 @@ function Dashboard({ token, onLogout }) {
   const openLeads = async (id) => {
       setViewingLeads(id);
       try {
-        const res = await fetch(`http://localhost:3000/api/leads/${id}`, { headers: { 'Authorization': `Bearer ${token}` }});
+        const res = await fetch(`${API_URL}/api/leads/${id}`, { headers: { 'Authorization': `Bearer ${token}` }});
         if (res.ok) setLeadsList(await res.json());
         else setLeadsList([]);
       } catch(e) { setLeadsList([]); }
@@ -305,6 +296,9 @@ function Dashboard({ token, onLogout }) {
                     <div key={code.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'15px', background:'rgba(255,255,255,0.02)', borderRadius:'8px', border:'1px solid var(--glass-border)' }}>
                         <div style={{flex:1}}>
                             <div className="flex-row">
+                                {/* NEW: Color Indicator Dot */}
+                                <div style={{width:'12px', height:'12px', borderRadius:'50%', backgroundColor: code.color, border: '1px solid var(--text-secondary)'}} title="QR Color"></div>
+                                
                                 <span style={{fontWeight:'bold', color:'var(--text-primary)'}}>{code.short_slug}</span>
                                 {code.dynamic_rules?.lead_capture && <span style={{fontSize:'0.7rem', background:'rgba(16, 185, 129, 0.2)', color:'var(--success)', padding:'2px 8px', borderRadius:'4px'}}>LEAD GEN</span>}
                             </div>
@@ -328,7 +322,7 @@ function Dashboard({ token, onLogout }) {
              </div>
         </div>
 
-        {/* NEW: DEVELOPER API CARD */}
+        {/* DEVELOPER API CARD */}
         <div className="glass-card col-span-3">
              <div className="card-header"><Terminal size={20} color="var(--accent)"/> Developer API</div>
              <div style={{display:'flex', flexDirection:'column', gap:'20px'}}>
