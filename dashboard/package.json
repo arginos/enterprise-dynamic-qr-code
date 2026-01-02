@@ -7,14 +7,15 @@
     "start": "next start"
   },
   "dependencies": {
+    "file-saver": "^2.0.5",
+    "framer-motion": "^10.16.4",
+    "lucide-react": "^0.263.1",
     "next": "^13.5.6",
+    "qr-code-styling": "^1.9.2",
+    "qrcode.react": "^3.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "qrcode.react": "^3.1.0",
-    "recharts": "^2.7.2",
-    "lucide-react": "^0.263.1",
-    "framer-motion": "^10.16.4",
     "react-dropzone": "^14.2.3",
-    "file-saver": "^2.0.5"
+    "recharts": "^2.7.2"
   }
 }
