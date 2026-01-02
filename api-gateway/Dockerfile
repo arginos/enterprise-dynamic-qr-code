@@ -1,18 +1,28 @@
 # 1. Base Image
 FROM node:18-alpine
 
-# 2. Set working directory
+# 2. Install System Dependencies for Canvas & Python (for build)
+RUN apk add --no-cache \
+    build-base \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    python3
+
+# 3. Set working directory
 WORKDIR /app
 
-# 3. Install dependencies
+# 4. Install dependencies
 COPY package*.json ./
 RUN npm install
 
-# 4. Copy source code
+# 5. Copy source code
 COPY . .
 
-# 5. Expose the port
+# 6. Expose the port
 EXPOSE 3000
 
-# 6. Start the application
+# 7. Start the application
 CMD ["npm", "start"]

@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: qr_platform
     volumes:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./postgres-data:/var/lib/postgresql/data  # <--- MUST LOOK LIKE THIS
+      - ./postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
 
@@ -20,31 +20,79 @@ services:
     ports:
       - "6379:6379"
 
-  # 3. API GATEWAY (Backend)
-  # ... inside services: ...
+  # 3. OBJECT STORAGE (MinIO) - NEW
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./minio-data:/data
+
+  # 4. MINIO SETUP (Create Buckets) - UPDATED
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO to be ready...';
+      until (/usr/bin/mc alias set myminio http://minio:9000 admin password); do 
+        echo '...waiting for MinIO...' && sleep 2; 
+      done;
+      /usr/bin/mc mb --ignore-existing myminio/qr-assets;
+      /usr/bin/mc mb --ignore-existing myminio/qr-exports;
+      /usr/bin/mc anonymous set public myminio/qr-assets;
+      /usr/bin/mc anonymous set public myminio/qr-exports;
+      echo 'MinIO Buckets Created Successfully';
+      exit 0;
+      "
+
+  # 5. API GATEWAY (Backend)
   api:
     build: ./api-gateway
     ports:
       - "3000:3000"
-    env_file:     # <--- ADD THIS SECTION
-      - .env      # <--- This tells Docker to read your .env file
-    depends_on:
-      - db
-      - redis
-  # ... existing services ...
-  worker:
-    build: ./analytics-worker
-    depends_on:
-      - db
-      - redis
     env_file:
       - .env
-  
-  # 4. DASHBOARD (Frontend)
+    environment:
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=password
+      - MINIO_BUCKET_ASSETS=qr-assets
+      - MINIO_BUCKET_EXPORTS=qr-exports
+    depends_on:
+      - db
+      - redis
+      - minio
+
+  # 6. ANALYTICS & BULK WORKER
+  worker:
+    build: ./analytics-worker
+    env_file:
+      - .env
+    environment:
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=password
+      - MINIO_BUCKET_ASSETS=qr-assets
+      - MINIO_BUCKET_EXPORTS=qr-exports
+    depends_on:
+      - db
+      - redis
+      - minio
+
+  # 7. DASHBOARD (Frontend)
   dashboard:
     build: ./dashboard
     ports:
-      - "8080:3000" # We map port 8080 on your laptop to 3000 inside the container
+      - "8080:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3000
     depends_on:
